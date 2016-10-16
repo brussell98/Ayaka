@@ -1,1 +1,20 @@
 token: ABCDEFgH.IJK_LMNOPQER
+# A list of channel IDs to operate in
+channels: ['148656206867726336', '237223871563038720']
+# Users to not moderate
+whitelist: ['95286900801146880']
+# Restrict how many messages a user can send
+slow_mode:
+  enabled: false
+  time: 5000   # Milliseconds between messages (seconds * 1000)
+# Stop caps spam
+caps_block:
+  enabled: false
+  threshold: 7  # Max ammount of caps in a row in a message
+# Stop links from being posted in chat
+links_block:
+  enabled: false
+  invites_only: true    # Only delete discord invites
+  allow_non_embed: true # Allow links wrapped in <> that don't show a preview
+# Stop messages with certain words from being posted
+blacklisted_words: ['kill your self']
