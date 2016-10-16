@@ -14,7 +14,7 @@ caps_block:
 # Stop links from being posted in chat
 links_block:
   enabled: false
-  invites_only: true    # Only delete discord invites
+  invites_only: false   # Only delete discord invites
   allow_non_embed: true # Allow links wrapped in <> that don't show a preview
 # Stop messages with certain words from being posted
 blacklisted_words: ['kill your self']
