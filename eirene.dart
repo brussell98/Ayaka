@@ -8,9 +8,13 @@ YamlMap config;
 Map<String, int> last_message = new Map();
 RegExp discord_link_regex = new RegExp(r'(discord\.gg\/[A-Za-z0-9]+|discordapp\.com\/invite\/[A-Za-z0-9]+)', caseSensitive: false);
 RegExp link_regex = new RegExp(r'<?(https?:\/\/(?:\S+\.|(?![\s]+))[^\s\.]+\.[^\s]{2,}|\S+\.[^\s]+\.[^\s]{2,})>?', caseSensitive: false);
+RegExp caps_spam;
 
 main() async {
 	config = loadYaml(await new File('config.yaml').readAsString());
+	if (config['caps_block']['enabled'] && config['caps_block']['threshold'] < 3)
+		throw 'The caps block threshold must be at least 3';
+	caps_spam = new RegExp('[A-Z][A-Z ]{' + (config['caps_block']['threshold'] - 2).toString() + '}[A-Z]');
 	bot = new Client(config['token'], new ClientOptions(disableEveryone: true, messageCacheSize: 5, forceFetchMembers: false));
 
 	bot.onReady.listen(onReady);
@@ -39,6 +43,9 @@ onMessage(MessageEvent e) {
 
 	if (config['blacklisted_words'].length != 0)
 		blacklistCheck(m);
+
+	if (config['caps_block']['enabled'])
+		checkCaps(m);
 }
 
 slowmodeCheck(Message m) {
@@ -68,4 +75,9 @@ blacklistCheck(Message m) {
 		if (lower.contains(word))
 			return m.delete();
 	}
+}
+
+checkCaps(Message m) {
+	if (caps_spam.hasMatch(m.content))
+		return m.delete();
 }

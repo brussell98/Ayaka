@@ -10,11 +10,11 @@ slow_mode:
 # Stop caps spam
 caps_block:
   enabled: false
-  threshold: 7  # Max ammount of caps in a row in a message
+  threshold: 10  # Max ammount of caps in a row in a message
 # Stop links from being posted in chat
 links_block:
   enabled: false
   invites_only: false   # Only delete discord invites
   allow_non_embed: true # Allow links wrapped in <> that don't show a preview
-# Stop messages with certain words from being posted
+# Stop messages with certain words from being posted (put all words/phrases in lowercase)
 blacklisted_words: ['kill your self']
