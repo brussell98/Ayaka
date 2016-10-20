@@ -18,6 +18,11 @@ global:
     allow_non_embed: true # Allow links wrapped in <> that don't show a preview
   # Stop messages with certain words from being posted (put all words/phrases in lowercase)
   blacklisted_words: ['kill your self']
+  # Stop mention spam
+  mentions_block:
+    enabled: true
+    threshold: 10   # If the message has this many mentions or more
+    action: 'ban'   # One of: delete, kick, ban
 # Specific channel settings
 148656206867726336:
   slow_mode:
