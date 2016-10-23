@@ -37,7 +37,7 @@ main() async {
 }
 
 onReady(ReadyEvent e) {
-	print('Eirene is online!');
+	print('Ayaka is online!');
 }
 
 onMessage(MessageEvent e) {
