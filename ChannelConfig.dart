@@ -1,4 +1,5 @@
 class ChannelConfig {
+	List<String> mods;
 	List<String> whitelist;
 	Map slow_mode;
 	Map caps_block;
@@ -7,7 +8,7 @@ class ChannelConfig {
 	RegExp caps_block_regex;
 	Map mentions_block;
 
-	ChannelConfig({this.whitelist, this.slow_mode, this.caps_block, this.links_block, this.blacklisted_words, this.mentions_block}) {
+	ChannelConfig({this.mods, this.whitelist, this.slow_mode, this.caps_block, this.links_block, this.blacklisted_words, this.mentions_block}) {
 		if (this.caps_block['enabled'] && this.caps_block['threshold'] < 3)
 			throw 'The caps block threshold must be at least 3';
 		caps_block_regex = new RegExp('[A-Z][A-Z ]{' + (this.caps_block['threshold'] - 2).toString() + '}[A-Z]');

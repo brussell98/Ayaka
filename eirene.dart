@@ -5,8 +5,8 @@ import 'ChannelConfig.dart';
 
 Client bot;
 String commandPrefix;
+Map<String, Function> commands = new Map<String, Function>();
 Map<String, ChannelConfig> channelConfig = new Map<String, ChannelConfig>();
-
 Map<String, int> last_message = new Map();
 RegExp discord_link_regex = new RegExp(r'discord(\.gg|app\.com\/invite|\.me)\/[A-Za-z0-9\-]+', caseSensitive: false);
 RegExp link_regex = new RegExp(r'<?(https?:\/\/(?:\S+\.|(?![\s]+))[^\s\.]+\.[^\s]{2,}|\S+\.[^\s]+\.[^\s]{2,})>?', caseSensitive: false);
@@ -17,6 +17,7 @@ main() async {
 	for (dynamic node in config.keys) {
 		if (node != 'global')
 			channelConfig[node.toString()] = new ChannelConfig(
+				mods: config[node]['mods'] == null ? config['global']['mods'] : config[node]['mods'],
 				whitelist: config[node]['whitelist'] == null ? config['global']['whitelist'] : config[node]['whitelist'],
 				slow_mode: config[node]['slow_mode'] == null ? config['global']['slow_mode'] : config[node]['slow_mode'],
 				caps_block: config[node]['caps_block'] == null ? config['global']['caps_block'] : config[node]['caps_block'],
@@ -27,6 +28,7 @@ main() async {
 	}
 
 	commandPrefix = config['global']['prefix'];
+	registerCommands();
 	bot = new Client(config['global']['token'], new ClientOptions(disableEveryone: true, messageCacheSize: 5, forceFetchMembers: false));
 
 	bot.onReady.listen(onReady);
@@ -39,13 +41,16 @@ onReady(ReadyEvent e) {
 }
 
 onMessage(MessageEvent e) {
-	if (e.message.channel is DMChannel)
-		return;
+	if (e.message.channel is DMChannel || !channelConfig.containsKey(e.message.channel.id))
+		return null;
 
 	Message m = e.message;
 
-	if (!channelConfig.containsKey(m.channel.id) || channelConfig[m.channel.id].whitelist.contains(m.author.id))
-		return;
+	if (channelConfig[m.channel.id].mods.contains(m.author.id) && m.content.startsWith(commandPrefix))
+		return handlePossibleCommand(m);
+
+	if (channelConfig[m.channel.id].whitelist.contains(m.author.id))
+		return null;
 
 	if (channelConfig[m.channel.id].mentions_block['enabled'])
 		checkMentions(m);
@@ -123,4 +128,33 @@ checkCaps(Message m) {
 		print('Message deleted for containing too many caps: ${m.author.username} (${m.author.id})\nMessage: ${m.content}');
 		return m.delete();
 	}
+}
+
+// Commands below
+
+registerCommands() {
+	commands['slow mode'] = (Message m, String args) {
+		switch (args.toLowerCase()) {
+			case 'enable':
+			case 'on':
+				channelConfig[m.channel.id].slow_mode['enabled'] = true;
+				break;
+			case 'disable':
+			case 'off':
+				channelConfig[m.channel.id].slow_mode['enabled'] = false;
+				break;
+			default:
+				try {
+					double time = double.parse(args);
+					channelConfig[m.channel.id].slow_mode['enabled'] = true;
+					channelConfig[m.channel.id].slow_mode['time'] = time;
+				} catch(error) {
+					m.channel.sendMessage('Invalid time');
+				}
+		};
+	};
+}
+
+handlePossibleCommand(Message m) {
+
 }
