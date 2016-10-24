@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:discord/discord.dart';
+import 'package:discord/discord_vm.dart';
 import 'package:yaml/yaml.dart';
 import 'ChannelConfig.dart';
 
@@ -7,7 +8,8 @@ Client bot;
 String commandPrefix;
 Map<String, Function> commands = new Map<String, Function>();
 Map<String, ChannelConfig> channelConfig = new Map<String, ChannelConfig>();
-Map<String, int> last_message = new Map();
+Map<String, int> last_message_time = new Map<String, int>();
+Map<String, String> last_message_text = new Map<String, String>();
 RegExp discord_link_regex = new RegExp(r'discord(\.gg|app\.com\/invite|\.me)\/[A-Za-z0-9\-]+', caseSensitive: false);
 RegExp link_regex = new RegExp(r'<?(https?:\/\/(?:\S+\.|(?![\s]+))[^\s\.]+\.[^\s]{2,}|\S+\.[^\s]+\.[^\s]{2,})>?', caseSensitive: false);
 
@@ -20,20 +22,22 @@ main() async {
 				mods: config[node]['mods'] == null ? config['global']['mods'] : config[node]['mods'],
 				whitelist: config[node]['whitelist'] == null ? config['global']['whitelist'] : config[node]['whitelist'],
 				slow_mode: config[node]['slow_mode'] == null ? config['global']['slow_mode'] : config[node]['slow_mode'],
-				caps_block: config[node]['caps_block'] == null ? config['global']['caps_block'] : config[node]['caps_block'],
-				links_block: config[node]['links_block'] == null ? config['global']['links_block'] : config[node]['links_block'],
+				caps_spam: config[node]['caps_spam'] == null ? config['global']['caps_spam'] : config[node]['caps_spam'],
+				block_links: config[node]['block_links'] == null ? config['global']['block_links'] : config[node]['block_links'],
 				blacklisted_words: config[node]['blacklisted_words'] == null ? config['global']['blacklisted_words'] : config[node]['blacklisted_words'],
-				mentions_block: config[node]['mentions_block'] == null ? config['global']['mentions_block'] : config[node]['mentions_block']
+				mentions_spam: config[node]['mentions_spam'] == null ? config['global']['mentions_spam'] : config[node]['mentions_spam'],
+				repeat_spam: config[node]['repeat_spam'] == null ? config['global']['repeat_spam'] : config[node]['repeat_spam']
 			);
 	}
 
 	commandPrefix = config['global']['prefix'];
 	registerCommands();
+	configureDiscordForVM();
 	bot = new Client(config['global']['token'], new ClientOptions(disableEveryone: true, messageCacheSize: 5, forceFetchMembers: false));
 
 	bot.onReady.listen(onReady);
 	bot.onMessage.listen(onMessage);
-	// Todo: on message edit
+	bot.onMessageUpdate.listen(onMessageUpdate);
 }
 
 onReady(ReadyEvent e) {
@@ -52,25 +56,50 @@ onMessage(MessageEvent e) {
 	if (channelConfig[m.channel.id].whitelist.contains(m.author.id))
 		return null;
 
-	if (channelConfig[m.channel.id].mentions_block['enabled'])
+	if (channelConfig[m.channel.id].mentions_spam['enabled'])
 		checkMentions(m);
 
 	if (channelConfig[m.channel.id].slow_mode['enabled'])
 		slowmodeCheck(m);
 
-	if (channelConfig[m.channel.id].links_block['enabled'])
+	if (channelConfig[m.channel.id].repeat_spam['enabled'])
+		repeatCheck(m);
+
+	if (channelConfig[m.channel.id].block_links['enabled'])
 		linkCheck(m);
 
 	if (channelConfig[m.channel.id].blacklisted_words.length != 0)
 		blacklistCheck(m);
 
-	if (channelConfig[m.channel.id].caps_block['enabled'])
+	if (channelConfig[m.channel.id].caps_spam['enabled'])
+		checkCaps(m);
+}
+
+onMessageUpdate(MessageUpdateEvent e) {
+	if (e.newMessage.channel is DMChannel || !channelConfig.containsKey(e.newMessage.channel.id))
+		return null;
+
+	Message m = e.newMessage;
+
+	if (channelConfig[m.channel.id].whitelist.contains(m.author.id))
+		return null;
+
+	if (channelConfig[m.channel.id].mentions_spam['enabled'])
+		checkMentions(m);
+
+	if (channelConfig[m.channel.id].block_links['enabled'])
+		linkCheck(m);
+
+	if (channelConfig[m.channel.id].blacklisted_words.length != 0)
+		blacklistCheck(m);
+
+	if (channelConfig[m.channel.id].caps_spam['enabled'])
 		checkCaps(m);
 }
 
 checkMentions(Message m) {
-	if (m.mentions.length >= channelConfig[m.channel.id].mentions_block['threshold']) {
-		switch (channelConfig[m.channel.id].mentions_block['action']) {
+	if (m.mentions.length >= channelConfig[m.channel.id].mentions_spam['threshold']) {
+		switch (channelConfig[m.channel.id].mentions_spam['action']) {
 			case 'kick':
 				m.member.kick();
 				m.delete();
@@ -90,10 +119,20 @@ checkMentions(Message m) {
 
 slowmodeCheck(Message m) {
 	int sent = m.timestamp.millisecondsSinceEpoch;
-	if (last_message[m.author.id] != null && sent - last_message[m.author.id] < channelConfig[m.channel.id].slow_mode['time'])
+	if (last_message_time[m.author.id] != null && sent - last_message_time[m.author.id] < channelConfig[m.channel.id].slow_mode['time']) {
+		print('Message deleted from ${m.author.username} (${m.author.id}) because of slow mode');
 		return m.delete();
+	}
+	last_message_time[m.author.id] = sent;
+}
 
-	last_message[m.author.id] = sent;
+repeatCheck(Message m) {
+	String text = channelConfig[m.channel.id].repeat_spam['ignore_case'] ? m.content.toLowerCase() : m.content;
+	if (last_message_text[m.author.id] != null && last_message_text[m.author.id] == text) {
+		print('Message deleted from ${m.author.username} (${m.author.id}) because of repeat message');
+		return m.delete();
+	}
+	last_message_text[m.author.id] = text;
 }
 
 linkCheck(Message m) {
@@ -102,10 +141,10 @@ linkCheck(Message m) {
 		return m.delete();
 	}
 
-	if (!channelConfig[m.channel.id].links_block['invites_only']) {
+	if (!channelConfig[m.channel.id].block_links['invites_only']) {
 		String link = link_regex.stringMatch(m.content);
 		if (link != null) {
-			if (!channelConfig[m.channel.id].links_block['allow_non_embed'] || (!link.startsWith('<') && !link.endsWith('>'))) {
+			if (!channelConfig[m.channel.id].block_links['allow_non_embed'] || (!link.startsWith('<') && !link.endsWith('>'))) {
 				print('Message deleted for containing link: ${m.author.username} (${m.author.id})\nMessage: ${m.content}');
 				return m.delete();
 			}
@@ -124,7 +163,7 @@ blacklistCheck(Message m) {
 }
 
 checkCaps(Message m) {
-	if (channelConfig[m.channel.id].caps_block_regex.hasMatch(m.content)) {
+	if (channelConfig[m.channel.id].caps_spam_regex.hasMatch(m.content)) {
 		print('Message deleted for containing too many caps: ${m.author.username} (${m.author.id})\nMessage: ${m.content}');
 		return m.delete();
 	}
