@@ -1,6 +1,6 @@
 name: ayaka
 description: A chat moderation bot for Discord
-version: 0.2.0
+version: 1.0.0
 author: brussell98
 dependencies:
   discord:

@@ -4,15 +4,15 @@ global:
   # Users that can use commands (also whitelisted)
   mods: ['95286900801146880', '125367104336691200']
   # Users to not moderate
-  whitelist: ['95286900801146880']
+  whitelist: ['81440962496172032']
   # Restrict how many messages a user can send
   slow_mode:
-    enabled: true
-    time: 5000   # Milliseconds between messages (seconds * 1000)
-  # Stop caps spam
-  caps_spam:
     enabled: false
-    threshold: 10  # Max ammount of caps in a row in a message
+    time: 1000   # Milliseconds between messages (seconds * 1000)
+  # Stop caps spam
+  caps_removal:
+    enabled: false
+    threshold: 10  # Max amount of caps in a row in a message
   # Stop links from being posted in chat
   block_links:
     enabled: false
@@ -24,18 +24,18 @@ global:
   mentions_spam:
     enabled: true
     threshold: 10   # If the message has this many mentions or more
-    action: 'ban'   # One of: delete, kick, ban
+    action: 'kick'  # One of: delete, kick, ban
   # Stop repeat messages
   repeat_spam:
-    enabled: true
+    enabled: false
     ignore_case: true   # Ignores capital or lowercase
 # Specific channel settings
 148656206867726336:
   slow_mode:
-    enabled: false
+    enabled: true
     time: 5000
   blacklisted_words: []
 237223871563038720:
-  caps_spam:
+  caps_removal:
     enabled: true
     threshold: 10
