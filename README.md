@@ -22,16 +22,15 @@ A feature-rich moderation bot for your Discord channels.
 
 3. [Create an application with a bot user.](https://discordapp.com/developers/applications/me) (Note the token)
 
-4. Set up the `config.yaml` file.
+4. Set up the `config.toml` file.
 
 5. Add your bot to a server using `https://discordapp.com/oauth2/authorize?client_id=YOUR_CLIENT_ID&scope=bot`.
 
-# config.yaml
+# config.toml
 
 - Every channel that you want to moderate must be listed even if no settings are changed.
 - All fields are required in each setting.
 - As shown in the example file, settings can be overwritten per-channel.
-- Indent by 2 spaces per level.
 
 ##### token
 The token given on the bot's application page (created above in step 3).
@@ -70,6 +69,10 @@ Remove messages containing many mentions.
 Stop users from posting the same message multiple times.   
 `ignore_case` Treat "ABC" and "abc" the same.
 
+##### welcome
+Greet new members. (This setting is not available globally)
+`message` The message to send. `{user}` = their username. `{mention}` = mention them. `{server}` = the server's name
+
 # Commands
 
 |Command|Args|Example|
@@ -85,3 +88,4 @@ Stop users from posting the same message multiple times.
 |!block links | `enable`, `on`, `disable`, `off`, `invites only` to only delete invites, `allow non-embeds` to allow suppressed links | !block links enable, allow non-embeds|
 |!mentions spam | `enable`, `on`, `disable`, `off`, `number` of mentions to trigger action, `action` to take (delete, kick, or ban) | !mentions spam 10 ban<br>!repeat spam delete|
 |!repeat spam | `enable`, `on`, `disable`, `off`, `ignore case` to ignore case (ABC = abc) | !repeat spam on ignore case<br>!repeat spam disable|
+|!welcome | `disable`, `off`, `message` to greet with | !welcome Welcome to the server {user}!<br>!welcome disable|

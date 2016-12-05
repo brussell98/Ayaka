@@ -27,5 +27,5 @@ doc/api/
 pubspec.lock
 
 # Other
-config.yaml
+config.toml
 .atom

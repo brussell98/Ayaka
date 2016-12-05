@@ -1,10 +1,10 @@
 name: ayaka
 description: A chat moderation bot for Discord
-version: 1.0.0
+version: 1.2.0
 author: brussell98
 dependencies:
   discord:
     git:
       url: git://github.com/Hackzzila/Discord-Dart.git
       ref: indev
-  yaml:
+  toml: ^0.5.0

@@ -1,7 +1,6 @@
-import 'dart:io';
 import 'package:discord/discord.dart';
 import 'package:discord/discord_vm.dart';
-import 'package:yaml/yaml.dart';
+import 'package:toml/loader/fs.dart';
 import 'ChannelConfig.dart';
 
 Client bot;
@@ -11,22 +10,24 @@ Map<String, ChannelConfig> channelConfig = new Map<String, ChannelConfig>();
 Map<String, int> last_message_time = new Map<String, int>();
 Map<String, String> last_message_text = new Map<String, String>();
 final RegExp discord_link_regex = new RegExp(r'discord(\.gg|app\.com\/invite|\.me)\/[A-Za-z0-9\-]+', caseSensitive: false);
-final RegExp link_regex = new RegExp(r'<?(https?:\/\/(?:\S+\.|(?![\s]+))[^\s\.]+\.[^\s]{2,}|\S+\.[^\s]+\.[^\s]{2,})>?', caseSensitive: false);
+final RegExp link_regex = new RegExp(r'<?(https?:\/\/(?:\S+\.|(?![\s]+))[^\s\.]+\.\S{2,}|\S+\.\S+\.\S{2,})>?', caseSensitive: false);
 
 main() async {
-	YamlMap config = loadYaml(await new File('config.yaml').readAsString());
+	FilesystemConfigLoader.use();
+	var config = await loadConfig();
 
 	for (dynamic node in config.keys) {
 		if (node != 'global')
 			channelConfig[node.toString()] = new ChannelConfig(
-				mods: new List<String>.from(config[node]['mods'] == null ? config['global']['mods'] : config[node]['mods']),
-				whitelist: new List<String>.from(config[node]['whitelist'] == null ? config['global']['whitelist'] : config[node]['whitelist']),
-				slow_mode: new Map.from(config[node]['slow_mode'] == null ? config['global']['slow_mode'] : config[node]['slow_mode']),
-				caps_removal: new Map.from(config[node]['caps_removal'] == null ? config['global']['caps_removal'] : config[node]['caps_removal']),
-				block_links: new Map<String, bool>.from(config[node]['block_links'] == null ? config['global']['block_links'] : config[node]['block_links']),
-				blacklisted_words: new List<String>.from(config[node]['blacklisted_words'] == null ? config['global']['blacklisted_words'] : config[node]['blacklisted_words']),
-				mentions_spam: new Map.from(config[node]['mentions_spam'] == null ? config['global']['mentions_spam'] : config[node]['mentions_spam']),
-				repeat_spam: new Map<String, bool>.from(config[node]['repeat_spam'] == null ? config['global']['repeat_spam'] : config[node]['repeat_spam'])
+				mods: new List<String>.from(config[node]['mods'] ?? config['global']['mods']),
+				whitelist: new List<String>.from(config[node]['whitelist'] ?? config['global']['whitelist']),
+				slow_mode: new Map.from(config[node]['slow_mode'] ?? config['global']['slow_mode']),
+				caps_removal: new Map.from(config[node]['caps_removal'] ?? config['global']['caps_removal']),
+				block_links: new Map<String, bool>.from(config[node]['block_links'] ?? config['global']['block_links']),
+				blacklisted_words: new List<String>.from(config[node]['blacklisted_words'] ?? config['global']['blacklisted_words']),
+				mentions_spam: new Map.from(config[node]['mentions_spam'] ?? config['global']['mentions_spam']),
+				repeat_spam: new Map<String, bool>.from(config[node]['repeat_spam'] ?? config['global']['repeat_spam']),
+				welcome: new Map.from(config[node]['welcome'] ?? {'enabled': false})
 			);
 	}
 
@@ -38,10 +39,23 @@ main() async {
 	bot.onReady.listen(onReady);
 	bot.onMessage.listen(onMessage);
 	bot.onMessageUpdate.listen(onMessageUpdate);
+	bot.onGuildMemberAdd.listen(onGuildMemberAdd);
 }
 
 onReady(ReadyEvent e) {
 	print('Ayaka is online!');
+}
+
+onGuildMemberAdd(GuildMemberAddEvent e) {
+	channelConfig.forEach((id, config) {
+		if (config.welcome['enabled'] && e.member.guild.channels.containsKey(id)) {
+			Map replacers = {'user': e.member.username, 'server': e.member.guild.name, 'mention': e.member.mention};
+			bot.channels[id].sendMessage(config.welcome['message'].replaceAllMapped(
+				new RegExp(r"\{(user|server|mention)\}", caseSensitive: false),
+				(Match m) => replacers[m[1]]
+			));
+		}
+	});
 }
 
 onMessage(MessageEvent e) {
@@ -320,6 +334,18 @@ registerCommands() {
 			default:
 				channelConfig[m.channel.id].repeat_spam['enabled'] = true;
 				channelConfig[m.channel.id].repeat_spam['ignore_case'] = args.toLowerCase().contains('ignore case');
+		};
+	};
+
+	commands['welcome'] = (Message m, String args) {
+		switch (args.toLowerCase()) {
+			case 'disable':
+			case 'off':
+				channelConfig[m.channel.id].welcome['enabled'] = false;
+				break;
+			default:
+				channelConfig[m.channel.id].welcome['enabled'] = true;
+				channelConfig[m.channel.id].welcome['message'] = args;
 		};
 	};
 }
